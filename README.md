@@ -271,3 +271,102 @@ npx @nestjs/cli@10 generate resource books --project books
    - `entities/book.entity.ts`
    - `books.service.ts`
    - `books.module.ts`
+
+---
+
+### 13. API Gateway İçinde Books Kaynağı (REST API Resource) Oluşturma
+
+API Gateway'in dış dünyadan (HTTP istemcilerinden) gelen kitap isteklerini karşılaması için `REST API` türünde `books` kaynağı üretilir.
+
+#### 🛠️ Bizde Çalıştırılan Komut:
+```bash
+npx @nestjs/cli@10 generate resource books --project bookstore-api-gateway
+```
+
+#### 📋 CLI İnteraktif Seçim Adımları:
+1. **What transport layer do you use?** -> `REST API` seçilir.
+2. **Would you like to generate CRUD entry points?** -> `Yes` (Y) seçilir.
+
+---
+
+#### 📂 Yapılan Değişiklikler ve Dosya Yapısı:
+
+1. **`apps/bookstore-api-gateway/src/books/books.controller.ts` (REST API Endpoints):**
+   - `@Post()` -> Yeni kitap oluşturma endpoint'i
+   - `@Get()` -> Tüm kitapları listeleme endpoint'i
+   - `@Get(':id')` -> ID bazlı kitap getirme endpoint'i
+   - `@Patch(':id')` -> Kitap güncelleme endpoint'i
+   - `@Delete(':id')` -> Kitap silme endpoint'i
+
+2. **`apps/bookstore-api-gateway/src/bookstore-api-gateway.module.ts`:**
+   - Üretilen `BooksModule`, `BookstoreApiGatewayModule` içerisine `imports` olarak bağlandı.
+
+---
+
+### 14. API Gateway ile Books Mikroservisi İletişimi ve `api/books.http` Testleri
+
+API Gateway'in `books` mikroservisine (TCP Port 3002) bağlanması ve istekleri yönlendirmesi için yapılan adımlar:
+
+#### 1️⃣ `apps/bookstore-api-gateway/src/books/books.module.ts` Yapılandırması (`BOOKS_CLIENT`)
+API Gateway'e Port 3002'deki `books` mikroservisi için `BOOKS_CLIENT` tanımlanır:
+
+```typescript
+import { Module } from '@nestjs/common';
+import { BooksService } from './books.service';
+import { BooksController } from './books.controller';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+
+@Module({
+  imports: [
+    ClientsModule.register([
+      {
+        name: 'BOOKS_CLIENT',
+        transport: Transport.TCP,
+        options: { port: 3002 },
+      },
+    ]),
+  ],
+  controllers: [BooksController],
+  providers: [BooksService],
+  exports: [BooksService],
+})
+export class BooksModule {}
+```
+
+#### 2️⃣ Servisleri Çalıştırma
+- **API Gateway (HTTP Kapısı):** `npx nest start bookstore-api-gateway --watch` (Port 3000)
+- **Books Mikroservisi (TCP İletişimi):** `npx nest start books --watch` (Port 3002)
+
+#### 3️⃣ `api/books.http` Test Dosyası
+*(Önemli Not: HTTP istekleri doğrudan iç mikroservisin TCP portuna (3002) atılamaz. Tüm HTTP istekleri dış kapı olan API Gateway'e (`http://localhost:3000/books`) gönderilmelidir).*
+
+```http
+#findAll
+GET http://localhost:3000/books
+
+#findOne
+GET http://localhost:3000/books/1
+
+#create
+POST http://localhost:3000/books
+Content-Type: application/json
+
+{
+    "title": "Test book post",
+    "author": "Test author",
+    "rating": 3
+}
+
+#update
+PATCH http://localhost:3000/books/1
+Content-Type: application/json
+
+{
+    "title": "Book 1 Updated",
+    "author": "Author 1 Updated",
+    "rating": 3
+}
+
+#delete
+DELETE http://localhost:3000/books/1
+```

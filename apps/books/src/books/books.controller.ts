@@ -7,7 +7,8 @@ import { UpdateBookDto } from './dto/update-book.dto';
 @Controller()
 export class BooksController {
   constructor(private readonly booksService: BooksService) { }
-  //books.create domain name followed by operation format 
+  //books.create > domain name followed by operation format 
+  //Payload decorator > is used to extract payload from the message
   @MessagePattern('books.create')
   create(@Payload() createBookDto: CreateBookDto) {
     return this.booksService.create(createBookDto);

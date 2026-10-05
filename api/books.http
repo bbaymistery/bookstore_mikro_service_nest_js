@@ -1,0 +1,28 @@
+#findAll
+GET http://localhost:3000/books
+
+#findOne
+GET http://localhost:3000/books/1
+
+#create
+POST http://localhost:3000/books
+Content-Type: application/json
+
+{
+    "title": "Test book post",
+    "author": "Test author",
+    "rating": 3
+}
+
+#update
+PATCH http://localhost:3000/books/1
+Content-Type: application/json
+
+{
+    "title": "Book 1 Updated",
+    "author": "Author 1 Updated",
+    "rating": 3
+}
+
+#delete
+DELETE http://localhost:3000/books/1
