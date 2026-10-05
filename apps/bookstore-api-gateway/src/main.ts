@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { BookstoreApiGatewayModule } from './bookstore-api-gateway.module';
+import { BookstoreApiGatewayModule } from './bookstore-api-gateway.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(BookstoreApiGatewayModule);

@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
-import { BookstoreApiGatewayController } from './bookstore-api-gateway.controller';
-import { BookstoreApiGatewayService } from './bookstore-api-gateway.service';
+import { BookstoreApiGatewayController } from './bookstore-api-gateway.controller.js';
+import { BookstoreApiGatewayService } from './bookstore-api-gateway.service.js';
+import { UsersModule } from './users/users.module.js';
 
 @Module({
-  imports: [],
+  imports: [UsersModule],
   controllers: [BookstoreApiGatewayController],
   providers: [BookstoreApiGatewayService],
 })
-export class BookstoreApiGatewayModule {}
+export class BookstoreApiGatewayModule { }

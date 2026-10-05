@@ -40,3 +40,27 @@ Uygulamanın varsayılan (ana) giriş noktasını `bookstore-api-gateway` olarak
 ```bash
 npm install @nestjs/microservices
 ```
+
+
+### 6. API Gateway İçinde Users Modülü Oluşturma (Mikroservis Bağlantısı)
+API Gateway içinden Users mikroservisine erişim ve bağlantı sağlamak için `bookstore-api-gateway` projesi altına `users` modülü eklenir:
+
+```bash
+npx @nestjs/cli@10 generate module users --project bookstore-api-gateway
+```
+
+### 7. API Gateway İçinde Users Servisi Oluşturma (Add Users Service to Users Module)
+API Gateway içerisindeki `users` modülünün mikroservis istemcisi ve iş mantığı katmanını yönetmesi için `users` servisi eklenir:
+
+```bash
+npx @nestjs/cli@10 generate service users --project bookstore-api-gateway
+```
+
+### 8. API Gateway İçinde Users Controller Oluşturma (Add Users Controller to Users Module)
+API Gateway içerisindeki `users` modülünün dış dünyadan (HTTP istemcilerinden) gelen istekleri karşılayıp yönlendirmesi için `users` controller eklenir:
+
+```bash
+npx @nestjs/cli@10 generate controller users --project bookstore-api-gateway
+```
+
+
