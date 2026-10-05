@@ -219,3 +219,55 @@ Tam mikroservis iletişimini başlatmak için iki farklı terminal sekmesinde se
   }
 ]
 ```
+### 12. Mikroservislere CRUD Kaynağı (Resource) Ekleme (Books Service)
+
+Mikroservisler için hazır CRUD (Create, Read, Update, Delete) uç noktaları ve veri yapıları üretmek için NestJS CLI `generate resource` komutu kullanılır.
+
+#### 🛠️ Bizde Çalıştırılan Komut:
+```bash
+npx @nestjs/cli@10 generate resource books --project books
+```
+
+#### 📋 CLI İnteraktif Seçim Adımları:
+1. **What transport layer do you use?** -> `Microservice (non-HTTP)` seçilir.
+2. **Would you like to generate CRUD entry points?** -> `Yes` (Y) seçilir.
+
+---
+
+#### 📂 Yapılan Değişiklikler ve Dosya Yapısı:
+
+1. **Ana Modül (`apps/books/src/books-app.module.ts`):**
+   - Uygulamanın kök modülü `BooksAppModule` olarak tanımlandı ve üretilen `BooksModule` buraya import edildi.
+
+2. **`apps/books/src/main.ts` (TCP Port 3002 Yapılandırması):**
+   ```typescript
+   import { NestFactory } from '@nestjs/core';
+   import { BooksAppModule } from './books-app.module';
+   import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+
+   async function bootstrap() {
+     const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+       BooksAppModule,
+       {
+         transport: Transport.TCP,
+         options: { port: 3002 },
+       },
+     );
+     await app.listen();
+   }
+   bootstrap();
+   ```
+
+3. **`apps/books/src/books/books.controller.ts` (CRUD Mesaj Desenleri):**
+   - `@MessagePattern('createBook')` -> Yeni kitap ekleme
+   - `@MessagePattern('findAllBooks')` -> Tüm kitapları listeleme
+   - `@MessagePattern('findOneBook')` -> ID ile kitap getirme
+   - `@MessagePattern('updateBook')` -> Kitap güncelleme
+   - `@MessagePattern('removeBook')` -> Kitap silme
+
+4. **DTO ve Entity Klasör Yapısı (`apps/books/src/books/`):**
+   - `dto/create-book.dto.ts`
+   - `dto/update-book.dto.ts`
+   - `entities/book.entity.ts`
+   - `books.service.ts`
+   - `books.module.ts`
