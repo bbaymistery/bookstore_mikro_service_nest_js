@@ -112,16 +112,29 @@ Düşünün ki büyük bir otel işletiyorsunuz:
 
 ### 10. VS Code Üzerinde İstek Testi Yapma (`users.http`)
 
-İsteklerinizi tarayıcı veya Postman açmadan doğrudan VS Code içinde test etmek için `.http` dosyası kullanılır:
+`npx nest start bookstore-api-gateway --watch` komutu çalışırken, isteklerinizi tarayıcı veya Postman açmadan doğrudan VS Code içinde test etmek için `users.http` dosyası kullanılır:
 
 ```http
 GET http://localhost:3000/users
 ```
 
-* 🎯 **VS Code'da İsteği Tetiklemek İçin (`Send Request` Butonu):**
-  1. VS Code eklenti mağazasından (Extensions) **"REST Client"** (*Huachao Mao*) eklentisini yükleyin.
-  2. `users.http` dosyasını açtığınızda kodun hemen üstünde küçük mavi bir **`Send Request`** yazısı belirecektir.
-  3. **`Send Request`** yazısına tıkladığınızda istek atılır ve sağ tarafta HTTP 200 OK yanıtı penceresi açılır.
+* 🎯 **VS Code'da İsteği Tetiklemek ve Yanıtı Görmek (`Send Request`):**
+  1. VS Code eklenti mağazasından **"REST Client"** (*Huachao Mao*) eklentisini yükleyin.
+  2. `users.http` dosyasını açıp `GET http://localhost:3000/users` kodunun üzerindeki mavi **`Send Request`** butonuna tıklayın.
+  3. Sağ tarafta açılan yanıt penceresinde aşağıdaki gibi `HTTP/1.1 200 OK` ve `mock findAll response` çıktısı görüntülenecektir:
+
+```http
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Content-Type: text/html; charset=utf-8
+Content-Length: 21
+ETag: W/"15-dP7gheiKMFhif1URmHUsX3T9cqs"
+Date: Mon, 05 Oct 2026 15:19:18 GMT
+Connection: close
+
+mock findAll response
+```
+
 
 
 
