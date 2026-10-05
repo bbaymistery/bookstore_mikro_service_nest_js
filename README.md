@@ -85,11 +85,11 @@ Düşünün ki büyük bir otel işletiyorsunuz:
 
 #### 📊 Özet Tablo: Projenizde Hangisi Ne Oluyor?
 
-| Uygulama | Türü | Dış Dünyaya Açık mı? | Nasıl İletişim Kurar? | Görevi |
-| :--- | :--- | :--- | :--- | :--- |
-| **`bookstore-api-gateway`** | **API Gateway (Resepsiyon)** | **EVET** (Port 3000) | HTTP (`http://localhost:3000`) | Dışarıdan gelen istekleri karşılar, güvenlik kontrolü yapar ve mikroservislere yönlendirir. |
-| **`users`** | **Mikroservis (Kullanıcı Departmanı)** | **HAYIR** (Dışarıya Kapalı) | TCP (İç Ağ Mesajlaşması - Port 3001) | Kullanıcı bilgilerini saklar, sorgular ve API Gateway'e yanıt döner. |
-| **`books`** | **Mikroservis (Kitap Departmanı)** | **HAYIR** (Dışarıya Kapalı) | TCP (İç Ağ Mesajlaşması - Port 3002) | Kitap listesini, stok durumunu yönetir ve yanıt döner. |
+| Uygulama                    | Türü                                   | Dış Dünyaya Açık mı?        | Nasıl İletişim Kurar?                | Görevi                                                                                      |
+| :-------------------------- | :------------------------------------- | :-------------------------- | :----------------------------------- | :------------------------------------------------------------------------------------------ |
+| **`bookstore-api-gateway`** | **API Gateway (Resepsiyon)**           | **EVET** (Port 3000)        | HTTP (`http://localhost:3000`)       | Dışarıdan gelen istekleri karşılar, güvenlik kontrolü yapar ve mikroservislere yönlendirir. |
+| **`users`**                 | **Mikroservis (Kullanıcı Departmanı)** | **HAYIR** (Dışarıya Kapalı) | TCP (İç Ağ Mesajlaşması - Port 3001) | Kullanıcı bilgilerini saklar, sorgular ve API Gateway'e yanıt döner.                        |
+| **`books`**                 | **Mikroservis (Kitap Departmanı)**     | **HAYIR** (Dışarıya Kapalı) | TCP (İç Ağ Mesajlaşması - Port 3002) | Kitap listesini, stok durumunu yönetir ve yanıt döner.                                      |
 
 #### 🚀 Servis Çalıştırma Komutları:
 
@@ -135,7 +135,87 @@ Connection: close
 mock findAll response
 ```
 
+---
+
+### 11. API Gateway ile Users Mikroservisi Arasında İletişim Kurma (TCP ClientProxy)
+
+API Gateway'in sahte (mock) veri dönmek yerine gerçek `users` mikroservisiyle konuşmasını sağlamak için uygulanan adımlar:
+
+#### 1️⃣ `apps/bookstore-api-gateway/src/users/users.module.ts` Dosyasına `ClientsModule` Tanımlanması
+API Gateway'e `USERS_CLIENT` adında Port 3001'i dinleyen bir TCP istemcisi tanımlanır:
+
+```typescript
+import { Module } from '@nestjs/common';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+
+@Module({
+  imports: [
+    ClientsModule.register([
+      {
+        name: 'USERS_CLIENT',
+        transport: Transport.TCP,
+        options: { port: 3001 }, // Users mikroservisinin portu
+      },
+    ]),
+  ],
+  controllers: [UsersController],
+  providers: [UsersService],
+})
+export class UsersModule {}
+```
+
+#### 2️⃣ `apps/bookstore-api-gateway/src/users/users.service.ts` Dosyasına `ClientProxy` Eklenmesi
+`ClientProxy` enjekte edilerek TCP üzerinden `users.findAll` mesaj deseni `users` mikroservisine gönderilir:
+
+```typescript
+import { Injectable, Inject } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+
+@Injectable()
+export class UsersService {
+  constructor(@Inject('USERS_CLIENT') private usersClient: ClientProxy) {}
+
+  async findAll() {
+    return this.usersClient.send('users.findAll', {});
+  }
+}
+```
+
+#### 3️⃣ İki Servisi Birlikte Çalıştırma ve Mikroservis İletişim Akışı
+Tam mikroservis iletişimini başlatmak için iki farklı terminal sekmesinde servisler çalıştırılır:
+
+- **Terminal 1:** `npx nest start bookstore-api-gateway --watch` (HTTP - Port 3000)
+- **Terminal 2:** `npx nest start users --watch` (TCP - Port 3001)
+
+<p style="display: flex; justify-content: space-between;  align-items: center">
+<img src="./ReadMe/boostoreRequestFlow.png" alt="Bookstore Request Flow" width="550" height="350">
+<img src="./ReadMe/boosterRequestFlow2.png" alt="Bookstore Request Flow" width="850" height="350">
+
+</p>
+
+#### 🔄 `npx nest start users --watch` Çalıştırıldığında Ne Gerçekleşti?
 
 
+1. `api/users.http` dosyasından `GET http://localhost:3000/users` isteği atıldığında kapıdaki API Gateway (Port 3000) HTTP isteğini karşılar.
+2. `UsersService`, `USERS_CLIENT` aracılığıyla arka planda Port 3001'de çalışan `users` mikroservisine TCP üzerinden `users.findAll` mesajını gönderir.
+3. `users` mikroservisindeki `@MessagePattern('users.findAll')` mesajı yakalar ve `UsersService` içerisindeki kullanıcı listesini yanıt olarak döner.
+4. API Gateway gelen yanıtı istemciye (REST Client / Browser) başarıyla iletir (`200 OK`):
 
-
+```json
+[
+  {
+    "id": 1,
+    "name": "John ",
+    "age": 25,
+    "lastname": "Doe"
+  },
+  {
+    "id": 2,
+    "name": "Jack ",
+    "age": 23,
+    "lastname": "Smith"
+  }
+]
+```

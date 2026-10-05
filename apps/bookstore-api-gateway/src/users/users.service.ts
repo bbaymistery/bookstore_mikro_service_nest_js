@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class UsersService {
-    findAll() {
-        return "mock findAll response";
+    constructor(@Inject('USERS_CLIENT') private usersClient: ClientProxy) { }
+    async findAll() {
+        return this.usersClient.send("users.findAll", {})
     }
 }
