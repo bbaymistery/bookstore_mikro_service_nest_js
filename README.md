@@ -370,3 +370,96 @@ Content-Type: application/json
 ### 5. Kitap sil
 DELETE http://localhost:3000/books/1
 ```
+
+---
+
+### 15. Monorepo Ortak Kontrat Kütüphanesi (`libs/contracts`) Oluşturma ve DTO'ları Paylaşma
+
+Mikroservisler ile API Gateway arasında kod tekrarını önlemek ve DTO/Arayüz kontratlarını tek bir ortak noktadan yönetmek için `contracts` kütüphanesi üretilir.
+
+#### 1️⃣ Ortak Kütüphane Üretme Komutu:
+```bash
+npx @nestjs/cli@10 generate library contracts
+```
+
+#### 2️⃣ Varsayılan Şablon Kodlarını Temizleme:
+```bash
+rm -rf libs/contracts/src/*
+```
+
+#### 3️⃣ Kitap DTO Klasörünü Oluşturma:
+```bash
+mkdir libs/contracts/src/books
+```
+
+#### 4️⃣ DTO Dosyalarını Ortak Kütüphaneye Kopyalama:
+```bash
+cp apps/books/src/books/dto/* libs/contracts/src/books
+```
+
+---
+
+#### 📂 Oluşan Kütüphane Yapısı (`libs/contracts/src/`):
+
+- **`libs/contracts/src/books/book.dto.ts`** -> Genel Kitap DTO nesnesi.
+- **`libs/contracts/src/books/create-book.dto.ts`** -> Yeni Kitap Ekleme DTO nesnesi.
+- **`libs/contracts/src/books/update-book.dto.ts`** -> Kitap Güncelleme DTO nesnesi.
+- **`libs/contracts/src/index.ts`** -> Tüm kontratların tek noktadan `@app/contracts` adı altında dışa aktarılması.
+
+---
+
+### 16. Tip Güvenlikli Mesaj Desenleri (`BOOK_PATTERNS`) ve API Gateway DTO Mantığı
+
+Mikroservisler arası iletişimde hataları önlemek amacıyla düz metin dizileri (hardcoded strings) yerine sabit desenler (`BOOK_PATTERNS`) ve TypeScript tip jenerikleri kullanılır.
+
+#### 1️⃣ Mesaj Desenlerinin Sabitlenmesi (`libs/contracts/src/books/book.patterns.ts`):
+```typescript
+export const BOOK_PATTERNS = {
+  CREATE: 'books.create',
+  FIND_ALL: 'books.findAll',
+  FIND_ONE: 'books.findOne',
+  UPDATE: 'books.update',
+  REMOVE: 'books.remove',
+};
+```
+
+#### 2️⃣ API Gateway Servisinde Tip Güvenliği (`apps/bookstore-api-gateway/src/books/books.service.ts`):
+`ClientProxy.send<ResponseType, RequestType>` jeneriği kullanılarak TCP mesajlarında ne tür veri gönderilip ne tür yanıt alınacağı tip düzeyinde garanti altına alınır:
+
+```typescript
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  BOOK_PATTERNS,
+  BookDto as ClientBookDto,
+  CreateBookDto as ClientCreateBookDto,
+  UpdateBookDto as ClientUpdateBookDto,
+} from '@app/contracts';
+import { ClientProxy } from '@nestjs/microservices';
+
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+
+@Injectable()
+export class BooksService {
+  constructor(@Inject('BOOKS_CLIENT') private readonly booksClient: ClientProxy) {}
+
+  create(createBookDto: CreateBookDto) {
+    return this.booksClient.send<ClientBookDto, ClientCreateBookDto>(
+      BOOK_PATTERNS.CREATE,
+      createBookDto,
+    );
+  }
+
+  findAll() {
+    return this.booksClient.send<ClientBookDto[]>(BOOK_PATTERNS.FIND_ALL, {});
+  }
+}
+```
+
+---
+
+#### 💡 Neden API Gateway Kendi DTO'sunu Tutarken Ortak Kontrat DTO'sunu da Import Eder?
+
+1. **Gelen Veri (Inbound HTTP):** API Gateway, dış dünyadan (HTTP POST/PATCH isteklerinden) gelen veriyi kendi yerel `./dto/create-book.dto.ts` sınıfı ile karşılar. HTTP doğrulama kuralları (`class-validator`: `@IsString()`, `@IsNumber()`) burada tanımlanır.
+2. **Giden Veri (Outbound TCP):** API Gateway, mikroservise TCP ile mesaj gönderirken mikroservisin beklediği resmi sözleşme tipini (`ClientCreateBookDto`) tip jeneriği olarak kullanır.
+3. **Geliştirme Esnekliği (Separation of Concerns):** Dış dünyaya açılan REST API veri modelleri ile mikroservisler arası iç iletişim modelleri birbirinden bağımsız evrilebilir.

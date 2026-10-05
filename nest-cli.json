@@ -7,7 +7,6 @@
     "webpack": false,
     "tsConfigPath": "apps/bookstore-api-gateway/tsconfig.app.json"
   },
-
   "monorepo": true,
   "root": "apps/bookstore-api-gateway",
   "defaultProject": "bookstore-api-gateway",
@@ -37,6 +36,15 @@
       "sourceRoot": "apps/books/src",
       "compilerOptions": {
         "tsConfigPath": "apps/books/tsconfig.app.json"
+      }
+    },
+    "contracts": {
+      "type": "library",
+      "root": "libs/contracts",
+      "entryFile": "index",
+      "sourceRoot": "libs/contracts/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/contracts/tsconfig.lib.json"
       }
     }
   }
