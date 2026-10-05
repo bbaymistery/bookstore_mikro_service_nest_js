@@ -63,4 +63,66 @@ API Gateway içerisindeki `users` modülünün dış dünyadan (HTTP istemcileri
 npx @nestjs/cli@10 generate controller users --project bookstore-api-gateway
 ```
 
+### 9. Servisleri Geliştirme (Watch) Modunda Çalıştırma ve Mimari Mantığı
+
+Her bir uygulamayı veya mikroservisi ayrı bir terminal sekmesinde aşağıdaki komutlarla başlatırız. `--watch` parametresi, koddaki değişiklikleri canlı olarak algılayıp servisinizi otomatik olarak yeniden başlatır (Live Reload).
+
+#### 🏨 Otel Benzetmesi (Dış Dünya vs İç Servisler)
+Düşünün ki büyük bir otel işletiyorsunuz:
+
+1. **1️⃣ Dış Dünyaya Açık Kapı = API Gateway (`bookstore-api-gateway`)**
+   * **Resepsiyon Masası (API Gateway):**
+     * Müşteriler (web siteniz, mobil uygulamanız, tarayıcı veya Postman) otele geldiğinde doğrudan mutfağa veya muhasebe odasına giremez. Önce kapıdaki Resepsiyona (`http://localhost:3000`) başvurur.
+     * **"Dış dünyaya açık" demek:** İnternetten, dışarıdaki kullanıcılardan gelen HTTP isteklerini (URL adresini) doğrudan kabul edebilen tek kapı demektir.
+
+2. **2️⃣ Gerçek Mikroservisler = `users` ve `books`**
+   * **Muhasebe Odası:** `users` Mikroservisi (Port `3001`)
+   * **Mutfak:** `books` Mikroservisi (Port `3002`)
+   * **Neden Dış Dünyaya Kapalıdırlar?**
+     * Dışarıdaki bir müşteri doğrudan mutfağa girip "Bana yemek pişir" diyemez. Müşterinin mutfağın telefon numarasını bilmesine gerek yoktur.
+     * Müşteri isteğini kapıdaki Resepsiyona (API Gateway) iletir. Resepsiyon arka planda iç telefon hattıyla (TCP protokolü ile) Mutfağa (`books`) veya Muhasebeye (`users`) haber verir.
+     * İşi yapan, veriyi işleyen ve saklayan asıl mikroservisler `users` ve `books` uygulamalarıdır.
+
+#### 📊 Özet Tablo: Projenizde Hangisi Ne Oluyor?
+
+| Uygulama | Türü | Dış Dünyaya Açık mı? | Nasıl İletişim Kurar? | Görevi |
+| :--- | :--- | :--- | :--- | :--- |
+| **`bookstore-api-gateway`** | **API Gateway (Resepsiyon)** | **EVET** (Port 3000) | HTTP (`http://localhost:3000`) | Dışarıdan gelen istekleri karşılar, güvenlik kontrolü yapar ve mikroservislere yönlendirir. |
+| **`users`** | **Mikroservis (Kullanıcı Departmanı)** | **HAYIR** (Dışarıya Kapalı) | TCP (İç Ağ Mesajlaşması - Port 3001) | Kullanıcı bilgilerini saklar, sorgular ve API Gateway'e yanıt döner. |
+| **`books`** | **Mikroservis (Kitap Departmanı)** | **HAYIR** (Dışarıya Kapalı) | TCP (İç Ağ Mesajlaşması - Port 3002) | Kitap listesini, stok durumunu yönetir ve yanıt döner. |
+
+#### 🚀 Servis Çalıştırma Komutları:
+
+- **1️⃣ API Gateway Servisini Çalıştırma:**
+  ```bash
+  npx nest start bookstore-api-gateway --watch
+  ```
+
+- **2️⃣ Users Mikroservisini Çalıştırma:**
+  ```bash
+  npx nest start users --watch
+  ```
+
+- **3️⃣ Books Mikroservisini Çalıştırma:**
+  ```bash
+  npx nest start books --watch
+  ```
+
+---
+
+### 10. VS Code Üzerinde İstek Testi Yapma (`users.http`)
+
+İsteklerinizi tarayıcı veya Postman açmadan doğrudan VS Code içinde test etmek için `.http` dosyası kullanılır:
+
+```http
+GET http://localhost:3000/users
+```
+
+* 🎯 **VS Code'da İsteği Tetiklemek İçin (`Send Request` Butonu):**
+  1. VS Code eklenti mağazasından (Extensions) **"REST Client"** (*Huachao Mao*) eklentisini yükleyin.
+  2. `users.http` dosyasını açtığınızda kodun hemen üstünde küçük mavi bir **`Send Request`** yazısı belirecektir.
+  3. **`Send Request`** yazısına tıkladığınızda istek atılır ve sağ tarafta HTTP 200 OK yanıtı penceresi açılır.
+
+
+
 

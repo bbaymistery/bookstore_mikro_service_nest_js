@@ -4,9 +4,10 @@
   "sourceRoot": "apps/bookstore-api-gateway/src",
   "compilerOptions": {
     "deleteOutDir": true,
-    "webpack": true,
+    "webpack": false,
     "tsConfigPath": "apps/bookstore-api-gateway/tsconfig.app.json"
   },
+
   "monorepo": true,
   "root": "apps/bookstore-api-gateway",
   "defaultProject": "bookstore-api-gateway",
