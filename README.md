@@ -463,3 +463,117 @@ export class BooksService {
 1. **Gelen Veri (Inbound HTTP):** API Gateway, dış dünyadan (HTTP POST/PATCH isteklerinden) gelen veriyi kendi yerel `./dto/create-book.dto.ts` sınıfı ile karşılar. HTTP doğrulama kuralları (`class-validator`: `@IsString()`, `@IsNumber()`) burada tanımlanır.
 2. **Giden Veri (Outbound TCP):** API Gateway, mikroservise TCP ile mesaj gönderirken mikroservisin beklediği resmi sözleşme tipini (`ClientCreateBookDto`) tip jeneriği olarak kullanır.
 3. **Geliştirme Esnekliği (Separation of Concerns):** Dış dünyaya açılan REST API veri modelleri ile mikroservisler arası iç iletişim modelleri birbirinden bağımsız evrilebilir.
+
+---
+
+### 17. Dinamik Mikroservis Konfigürasyonu (`client-config`) ve `ClientProxyFactory`
+
+Hardcoded (sabit kodlanmış) port numaraları yerine, mikroservis bağlantılarını ortam değişkenlerinden (`.env`) okuyan ve `joi` ile doğrulayan dinamik konfigürasyon yapısına geçilmiştir.
+
+#### 1️⃣ Symbol Tabanlı Enjeksiyon Anahtarları (`constant.ts`)
+Metinsel (`'BOOKS_CLIENT'`) string ifadeleri yerine TypeScript tip güvenliği sağlayan `Symbol` ifadeleri kullanılır:
+- `apps/bookstore-api-gateway/src/books/constant.ts`:
+  ```typescript
+  export const BOOKS_CLIENT = Symbol('BOOKS_CLIENT');
+  ```
+- `apps/bookstore-api-gateway/src/users/constant.ts`:
+  ```typescript
+  export const USERS_CLIENT = Symbol('USERS_CLIENT');
+  ```
+
+#### 2️⃣ `client-config` Modülü (`@nestjs/config` & `joi`)
+Mikroservis portlarını ortam değişkenlerinden (`USERS_CLIENT_PORT`, `BOOKS_CLIENT_PORT`) okumak ve `joi` kütüphanesi ile doğrulama şeması oluşturmak için `ClientConfigModule` ve `ClientConfigService` eklenmiştir.
+
+- **`apps/bookstore-api-gateway/src/client-config/client-config.module.ts`**:
+  ```typescript
+  import { Module } from '@nestjs/common';
+  import { ConfigModule } from '@nestjs/config';
+  import * as joi from 'joi';
+  import { ClientConfigService } from './client-config.service';
+
+  @Module({
+    imports: [
+      ConfigModule.forRoot({
+        isGlobal: false,
+        validationSchema: joi.object({
+          USERS_CLIENT_PORT: joi.number().default(3001),
+          BOOKS_CLIENT_PORT: joi.number().default(3002),
+        }),
+      }),
+    ],
+    providers: [ClientConfigService],
+    exports: [ClientConfigService],
+  })
+  export class ClientConfigModule {}
+  ```
+
+- **`apps/bookstore-api-gateway/src/client-config/client-config.service.ts`**:
+  ```typescript
+  import { Injectable } from '@nestjs/common';
+  import { ConfigService } from '@nestjs/config';
+  import { ClientOptions, Transport } from '@nestjs/microservices';
+
+  @Injectable()
+  export class ClientConfigService {
+    constructor(private readonly config: ConfigService) {}
+
+    getBooksClientPort(): number {
+      return this.config.get<number>('BOOKS_CLIENT_PORT') ?? 3002;
+    }
+
+    getUsersClientPort(): number {
+      return this.config.get<number>('USERS_CLIENT_PORT') ?? 3001;
+    }
+
+    get booksClientOptions(): ClientOptions {
+      return {
+        transport: Transport.TCP,
+        options: {
+          port: this.getBooksClientPort(),
+        },
+      };
+    }
+
+    get usersClientOptions(): ClientOptions {
+      return {
+        transport: Transport.TCP,
+        options: {
+          port: this.getUsersClientPort(),
+        },
+      };
+    }
+  }
+  ```
+
+#### 3️⃣ Custom Provider ve `ClientProxyFactory.create` Kullanımı
+Modüllerde (`BooksModule` & `UsersModule`) istemcileri dinamik olarak üretmek için `ClientProxyFactory.create` fabrikası entegre edilmiştir:
+
+- **`apps/bookstore-api-gateway/src/books/books.module.ts`**:
+  ```typescript
+  import { Module } from '@nestjs/common';
+  import { ClientProxyFactory } from '@nestjs/microservices';
+
+  import { ClientConfigModule } from '../client-config/client-config.module';
+  import { ClientConfigService } from '../client-config/client-config.service';
+  import { BooksController } from './books.controller';
+  import { BooksService } from './books.service';
+  import { BOOKS_CLIENT } from './constant';
+
+  @Module({
+    imports: [ClientConfigModule],
+    controllers: [BooksController],
+    providers: [
+      BooksService,
+      {
+        provide: BOOKS_CLIENT,
+        useFactory: (configService: ClientConfigService) => {
+          const clientOptions = configService.booksClientOptions;
+          return ClientProxyFactory.create(clientOptions);
+        },
+        inject: [ClientConfigService],
+      },
+    ],
+    exports: [BooksService],
+  })
+  export class BooksModule {}
+  ```

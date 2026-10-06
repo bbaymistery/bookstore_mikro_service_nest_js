@@ -12,6 +12,8 @@ import { ClientProxy } from '@nestjs/microservices';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 
+import { BOOKS_CLIENT } from './constant';
+
 /**
  * 💡 Neden 3 Tane DTO Görünüyor? (TypeScript Generics Açıklaması)
  * 
@@ -23,7 +25,7 @@ import { UpdateBookDto } from './dto/update-book.dto';
  */
 @Injectable()
 export class BooksService {
-  constructor(@Inject('BOOKS_CLIENT') private readonly booksClient: ClientProxy) { }
+  constructor(@Inject(BOOKS_CLIENT) private readonly booksClient: ClientProxy) {}
 
   /**
    * Yeni Kitap Ekleme

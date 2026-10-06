@@ -1,20 +1,26 @@
 import { Module } from '@nestjs/common';
-import { BooksService } from './books.service';
+import { ClientProxyFactory } from '@nestjs/microservices';
+
+import { ClientConfigModule } from '../client-config/client-config.module';
+import { ClientConfigService } from '../client-config/client-config.service';
 import { BooksController } from './books.controller';
-import { ClientsModule, Transport } from '@nestjs/microservices';
+import { BooksService } from './books.service';
+import { BOOKS_CLIENT } from './constant';
 
 @Module({
-  imports: [
-    ClientsModule.register([
-      {
-        name: 'BOOKS_CLIENT',
-        transport: Transport.TCP,
-        options: { port: 3002 },
-      },
-    ]),
-  ],
+  imports: [ClientConfigModule],
   controllers: [BooksController],
-  providers: [BooksService],
+  providers: [
+    BooksService,
+    {
+      provide: BOOKS_CLIENT,
+      useFactory: (configService: ClientConfigService) => {
+        const clientOptions = configService.booksClientOptions;
+        return ClientProxyFactory.create(clientOptions);
+      },
+      inject: [ClientConfigService],
+    },
+  ],
   exports: [BooksService],
 })
-export class BooksModule { }
+export class BooksModule {}
